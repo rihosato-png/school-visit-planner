@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学校訪問アクセスガイド & プランナー (Supabase本番版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { colors: { primary: '#4f46e5', secondary: '#4338ca' } }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <header class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div>
+                <p class="text-sm text-blue-200 mb-1"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>クラウドリアルタイム同期中 (ROOM: ZV2QYB)</p>
+                <h1 class="text-2xl font-bold">学校訪問アクセスガイド &amp; プランナー</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="flex -space-x-2">
+                    <img class="w-8 h-8 rounded-full border-2 border-indigo-800" src="https://i.pravatar.cc/100?img=1">
+                    <img class="w-8 h-8 rounded-full border-2 border-indigo-800" src="https://i.pravatar.cc/100?img=5">
+                </div>
+                <span class="text-xs text-blue-100">社内メンバー接続中</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="page-top" class="max-w-7xl mx-auto px-4 py-8">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-blue-50 text-blue-600 p-3.5 rounded-xl mr-3 text-lg border border-blue-100">
+                        <i class="fa-regular fa-lightbulb"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400">訪問計画中</p>
+                        <p class="text-2xl font-black text-gray-800 mt-0.5"><span id="count-planning">0</span> <span class="text-xs font-normal text-gray-500">校</span></p>
+                    </div>
+                </div>
+                <span class="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">アポ取り</span>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-amber-50 text-amber-600 p-3.5 rounded-xl mr-3 text-lg border border-amber-100">
+                        <i class="fa-regular fa-calendar-days"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 flex flex-col">
+                            <span>訪問予定 (今週)</span>
+                            <span id="week-period" class="text-[10px] font-normal text-gray-400 mt-0.5 bg-gray-100 px-1 py-0.5 rounded w-max">(--/--〜--/--)</span>
+                        </p>
+                        <p class="text-2xl font-black text-gray-800 mt-0.5"><span id="count-scheduled">0</span> <span class="text-xs font-normal text-gray-500">校</span></p>
+                    </div>
+                </div>
+                <span class="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">当週分</span>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-purple-50 text-purple-600 p-3.5 rounded-xl mr-3 text-lg border border-purple-100">
+                        <i class="fa-solid fa-list-ul"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400">訪問予定 (総数)</p>
+                        <p class="text-2xl font-black text-gray-800 mt-0.5"><span id="count-scheduled-total">0</span> <span class="text-xs font-normal text-gray-500">校</span></p>
+                    </div>
+                </div>
+                <span class="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">全日程</span>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-emerald-50 text-emerald-600 p-3.5 rounded-xl mr-3 text-lg border border-emerald-100">
+                        <i class="fa-solid fa-check-to-slot"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400">訪問完了</p>
+                        <p class="text-2xl font-black text-gray-800 mt-0.5"><span id="count-completed">0</span> <span class="text-xs font-normal text-gray-500">校</span></p>
+                    </div>
+                </div>
+                <span class="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">実績</span>
+            </div>
+        </div>
+
+        <div class="flex justify-end mb-6">
+            <button onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-sm flex items-center transition">
+                <i class="fa-solid fa-circle-plus mr-2"></i>学校カードを新規追加
+            </button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-4 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 border border-gray-100">
+            <div class="flex w-full md:w-auto flex-1 gap-3">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
+                    <input type="text" id="searchInput" placeholder="学校名、駅名、就職先、学科名で検索..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50/50">
+                </div>
+                <select id="regionSelect" class="border border-gray-200 rounded-lg px-4 py-2 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-600">
+                    <option value="">すべての都道府県</option>
+                    <option value="東京都">東京都</option>
+                    <option value="大阪府">大阪府</option>
+                    <option value="愛知県">愛知県</option>
+                </select>
+            </div>
+            
+            <div class="flex space-x-1 bg-gray-100/80 p-1 rounded-lg w-full md:w-auto overflow-x-auto" id="categoryTabs">
+                <button class="tab-btn active px-4 py-1.5 text-xs rounded-md bg-white shadow-sm text-gray-800 font-bold border border-gray-200/50" data-category="すべて">すべて</button>
+                <button class="tab-btn px-4 py-1.5 text-xs rounded-md text-gray-600 hover:bg-gray-200/50" data-category="eスポーツ">eスポーツ系</button>
+                <button class="tab-btn px-4 py-1.5 text-xs rounded-md text-gray-600 hover:bg-gray-200/50" data-category="自動車">自動車系</button>
+                <button class="tab-btn px-4 py-1.5 text-xs rounded-md text-gray-600 hover:bg-gray-200/50" data-category="スポーツ">スポーツ系</button>
+            </div>
+        </div>
+
+        <div class="mb-4 flex justify-between items-center">
+            <p class="text-sm text-gray-500 font-bold">検索結果: <span id="result-count" class="text-indigo-600 text-base">0</span> 件</p>
+        </div>
+        <div id="card-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+
+    <div id="page-detail" class="max-w-7xl mx-auto px-4 py-8 hidden">
+        <div class="flex justify-between items-center mb-4">
+            <button onclick="showTopPage()" class="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-xs hover:bg-gray-50 flex items-center shadow-sm transition">
+                <i class="fa-solid fa-arrow-left mr-2"></i> 一覧に戻る
+            </button>
+            <div class="flex items-center space-x-2">
+                <button onclick="openEditModal()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition flex items-center">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i>カード内容を編集する
+                </button>
+                <button class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 font-bold text-xs shadow transition flex items-center" onclick="saveAndReturn()">
+                    <i class="fa-solid fa-floppy-disk mr-1.5"></i>ステータス・日程を保存して戻る
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200/80 p-8">
+            <div class="flex flex-col lg:flex-row justify-between items-start gap-6 mb-6">
+                <div class="space-y-2">
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span id="detail-badge-cat" class="bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-0.5 rounded font-medium">eスポーツ</span>
+                        <span id="detail-badge-reg" class="bg-slate-50 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded font-medium">東京都</span>
+                        <span id="detail-badge-walk" class="bg-orange-50 text-orange-600 border border-orange-100 px-2.5 py-0.5 rounded flex items-center font-medium"><i class="fa-regular fa-clock mr-1"></i>最寄り駅から徒歩：徒歩5分</span>
+                    </div>
+                    <h1 id="detail-name" class="text-2xl font-bold text-slate-800">学校名</h1>
+                    <p id="detail-address" class="text-xs text-gray-400 flex items-center"><i class="fa-solid fa-location-dot mr-1.5"></i>住所</p>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 shadow-sm min-w-[340px]">
+                    <div class="flex-1 space-y-1">
+                        <label class="text-[11px] font-medium text-gray-400 block">訪問ステータス</label>
+                        <select id="detail-status-select" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium">
+                            <option value="未選択">未選択</option>
+                            <option value="計画中">計画中</option>
+                            <option value="訪問予定">訪問予定</option>
+                            <option value="訪問完了">訪問完了</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 space-y-1">
+                        <label class="text-[11px] font-medium text-gray-400 block">訪問予定日</label>
+                        <input type="date" id="detail-date-input" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-gray-100 pt-6">
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="space-y-2">
+                        <h2 class="text-xs font-bold text-slate-400 flex items-center"><i class="fa-solid fa-map-signs mr-1.5"></i>駅からの詳しい徒歩アクセス</h2>
+                        <div class="bg-slate-50/60 border border-slate-100 rounded-xl p-4 flex items-start gap-3">
+                            <span id="detail-station-badge" class="bg-white border border-gray-200 px-2 py-0.5 rounded font-bold text-xs shadow-sm text-slate-700 whitespace-nowrap">高田馬場駅</span>
+                            <p id="detail-access" class="text-xs text-slate-600 leading-relaxed">アクセス情報</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <h2 class="text-xs font-bold text-slate-400 flex items-center"><i class="fa-solid fa-tags mr-1.5"></i>紹介学科・専攻</h2>
+                        <div id="detail-majors" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <div class="space-y-2">
+                        <h2 class="text-xs font-bold text-slate-400 flex items-center"><i class="fa-solid fa-building mr-1.5"></i>主な就職・内定実績</h2>
+                        <div id="detail-careers" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+                </div>
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-slate-50/50 border border-slate-200/60 rounded-xl p-5 space-y-4">
+                        <div class="flex justify-between items-center border-b border-gray-200/60 pb-2">
+                            <h2 class="text-xs font-bold text-slate-600 flex items-center"><i class="fa-regular fa-square-check mr-1.5"></i>訪問時チェックリスト</h2>
+                            <span class="bg-slate-200/80 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded scale-90">要チェック</span>
+                        </div>
+                        <div class="space-y-3 text-xs text-slate-700">
+                            <label class="flex items-start gap-2.5 cursor-pointer"><input type="checkbox" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"> <span>校舎・機材（ゲーミングPC等のスペック）を見る</span></label>
+                            <label class="flex items-start gap-2.5 cursor-pointer"><input type="checkbox" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"> <span>プロチーム所属講師や指導内容を聞く</span></label>
+                            <label class="flex items-start gap-2.5 cursor-pointer"><input type="checkbox" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"> <span>就職実績・実習先を確認する</span></label>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <h2 class="text-xs font-bold text-slate-400 flex items-center"><i class="fa-regular fa-comment-alt mr-1.5"></i>訪問メモ（持ち物、質問、当日の感想など）</h2>
+                        <textarea id="detail-memo" rows="4" class="w-full p-4 border border-gray-200 rounded-xl text-xs bg-white text-slate-700 placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="例：個別相談で奨学金制度について聞く。筆記用具持参。"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden" onclick="closeAllModals()"></div>
+
+    <div id="modal-add-school" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl border border-gray-200 p-6 z-50 w-full max-w-lg hidden">
+        <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-circle-plus text-blue-600 mr-2"></i>学校カードを新規追加</h2>
+        <div class="space-y-3 text-xs">
+            <div>
+                <label class="block font-bold text-gray-500 mb-1">学校名 <span class="text-red-500">*</span></label>
+                <input type="text" id="add-name" class="w-full border p-2 rounded-lg">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">系統（専門内容）</label>
+                    <select id="add-category" class="w-full border p-2 rounded-lg bg-white">
+                        <option value="eスポーツ">eスポーツ系</option>
+                        <option value="自動車">自動車系</option>
+                        <option value="スポーツ">スポーツ系</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">都道府県</label>
+                    <select id="add-region" class="w-full border p-2 rounded-lg bg-white">
+                        <option value="東京都">東京都</option>
+                        <option value="大阪府">大阪府</option>
+                        <option value="愛知県">愛知県</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">最寄り駅</label>
+                    <input type="text" id="add-station" class="w-full border p-2 rounded-lg" placeholder="例：高田馬場駅">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">徒歩分数</label>
+                    <input type="text" id="add-walk" class="w-full border p-2 rounded-lg" placeholder="例：徒歩5分">
+                </div>
+            </div>
+            <div>
+                <label class="block font-bold text-gray-500 mb-1">住所</label>
+                <input type="text" id="add-address" class="w-full border p-2 rounded-lg">
+            </div>
+        </div>
+        <div class="flex justify-end space-x-2 mt-6 text-xs">
+            <button onclick="closeAllModals()" class="bg-gray-100 px-4 py-2 rounded-lg text-gray-600 font-bold hover:bg-gray-200 transition">キャンセル</button>
+            <button onclick="submitAddSchool()" class="bg-blue-600 px-4 py-2 rounded-lg text-white font-bold hover:bg-blue-700 transition">カードを登録する</button>
+        </div>
+    </div>
+
+    <div id="modal-edit-school" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl border border-gray-200 p-6 z-50 w-full max-w-xl hidden">
+        <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-pen-to-square text-amber-500 mr-2"></i>学校情報の編集</h2>
+        <div class="space-y-3 text-xs max-h-[65vh] overflow-y-auto pr-1">
+            <div>
+                <label class="block font-bold text-gray-500 mb-1">学校名</label>
+                <input type="text" id="edit-name" class="w-full border p-2 rounded-lg">
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">系統</label>
+                    <select id="edit-category" class="w-full border p-2 rounded-lg bg-white">
+                        <option value="eスポーツ">eスポーツ系</option>
+                        <option value="自動車">自動車系</option>
+                        <option value="スポーツ">スポーツ系</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">都道府県</label>
+                    <select id="edit-region" class="w-full border p-2 rounded-lg bg-white">
+                        <option value="東京都">東京都</option>
+                        <option value="大阪府">大阪府</option>
+                        <option value="愛知県">愛知県</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">徒歩分数表現</label>
+                    <input type="text" id="edit-walk" class="w-full border p-2 rounded-lg">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">最寄り駅バッジ名</label>
+                    <input type="text" id="edit-station" class="w-full border p-2 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">住所</label>
+                    <input type="text" id="edit-address" class="w-full border p-2 rounded-lg">
+                </div>
+            </div>
+            <div>
+                <label class="block font-bold text-gray-500 mb-1">駅からの詳しい徒歩アクセス記述</label>
+                <textarea id="edit-access" rows="2" class="w-full border p-2 rounded-lg"></textarea>
+            </div>
+            <div>
+                <label class="block font-bold text-gray-500 mb-1">紹介学科・専攻 (カンマ「,」区切り)</label>
+                <input type="text" id="edit-majors" class="w-full border p-2 rounded-lg">
+            </div>
+            <div>
+                <label class="block font-bold text-gray-500 mb-1">主な就職・内定実績 (カンマ「,」区切り)</label>
+                <textarea id="edit-careers" rows="2" class="w-full border p-2 rounded-lg"></textarea>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-2 mt-6 text-xs">
+            <button onclick="closeAllModals()" class="bg-gray-100 px-4 py-2 rounded-lg text-gray-600 font-bold hover:bg-gray-200 transition">変更を破棄</button>
+            <button onclick="submitEditSchool()" class="bg-amber-500 px-4 py-2 rounded-lg text-white font-bold hover:bg-amber-600 transition">変更を保存</button>
+        </div>
+    </div>
+
+    <script>
+        // ★【最重要】ここにあなたのSupabaseの鍵を貼り付けてください！
+        const SUPABASE_URL = "ksjnuvvgmcfiesaqypzr";
+        const SUPABASE_ANON_KEY = "ksjnuvvgmcfiesaqypzr";
+
+        // Supabaseクライアントの初期化
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 今週の範囲計算
+        const today = new Date();
+        const currentDay = today.getDay();
+        const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+        const monday = new Date(today); monday.setDate(today.getDate() + distanceToMonday); monday.setHours(0,0,0,0);
+        const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23,59,59,999);
+        document.getElementById('week-period').innerText = `(${monday.getMonth() + 1}/${monday.getDate()}〜${sunday.getMonth() + 1}/${sunday.getDate()})`;
+
+        let schoolsData = [];
+        let currentSelectedSchoolId = null;
+
+        function isDateInThisWeek(dateStr) {
+            if (!dateStr) return false;
+            const targetDate = new Date(dateStr);
+            return targetDate >= monday && targetDate <= sunday;
+        }
+
+        // クラウドから最新データをロードする関数
+        async function loadDataFromSupabase() {
+            const { data, error } = await supabase.from('schools').select('*').order('id', { ascending: true });
+            if (error) { console.error("データ取得エラー:", error); return; }
+            schoolsData = data;
+            updateDashboardCounters();
+            renderCardList();
+            
+            // もし詳細画面を開いている最中なら、その中身も同期更新
+            if (currentSelectedSchoolId) {
+                refreshDetailPageWithoutState();
+            }
+        }
+
+        function updateDashboardCounters() {
+            const planningCount = schoolsData.filter(s => s.status === "計画中").length;
+            const scheduledThisWeekCount = schoolsData.filter(s => s.status === "訪問予定" && isDateInThisWeek(s.date)).length;
+            const scheduledTotalCount = schoolsData.filter(s => s.status === "訪問予定").length; 
+            const completedCount = schoolsData.filter(s => s.status === "訪問完了").length;
+            
+            document.getElementById('count-planning').innerText = planningCount;
+            document.getElementById('count-scheduled').innerText = scheduledThisWeekCount;
+            document.getElementById('count-scheduled-total').innerText = scheduledTotalCount;
+            document.getElementById('count-completed').innerText = completedCount;
+        }
+
+        function renderCardList() {
+            const container = document.getElementById('card-list');
+            container.innerHTML = '';
+
+            const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+            const region = document.getElementById('regionSelect').value;
+            const activeTab = document.querySelector('.tab-btn.active').getAttribute('data-category');
+
+            const filtered = schoolsData.filter(school => {
+                const majorsStr = (school.majors || []).join(' ').toLowerCase();
+                const careersStr = (school.careers || []).join(' ').toLowerCase();
+                
+                const matchKeyword = keyword === "" || 
+                    school.name.toLowerCase().includes(keyword) ||
+                    (school.station && school.station.toLowerCase().includes(keyword)) ||
+                    (school.access && school.access.toLowerCase().includes(keyword)) ||
+                    (school.address && school.address.toLowerCase().includes(keyword)) ||
+                    (school.memo && school.memo.toLowerCase().includes(keyword)) ||
+                    majorsStr.includes(keyword) ||
+                    careersStr.includes(keyword);
+
+                const matchRegion = region === "" || school.region === region;
+                const matchTab = activeTab === "すべて" || school.category === activeTab;
+                
+                return matchKeyword && matchRegion && matchTab;
+            });
+
+            document.getElementById('result-count').innerText = filtered.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-200 text-sm">該当する学校が見つかりません。</div>`;
+                return;
+            }
+
+            filtered.forEach(school => {
+                let statusBadge = `<span class="bg-gray-100 text-gray-500 text-[11px] px-2 py-0.5 rounded font-medium">未選択</span>`;
+                let alertClass = "border-gray-200 shadow-sm";
+                
+                if(school.status === "計画中") {
+                    statusBadge = `<span class="bg-blue-100 text-blue-800 text-[11px] px-2 py-0.5 rounded font-bold border border-blue-200"><i class="fa-regular fa-lightbulb mr-1"></i>計画中</span>`;
+                }
+                
+                if(school.status === "訪問予定") {
+                    if (!school.date || school.date.trim() === "") {
+                        statusBadge = `<span class="bg-red-100 text-red-800 text-[11px] px-2 py-0.5 rounded font-bold border border-red-200 flex items-center animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1"></i>日程未定！</span>`;
+                        alertClass = "border-red-200 bg-red-50/10";
+                    } else if (isDateInThisWeek(school.date)) {
+                        statusBadge = `<span class="bg-amber-100 text-amber-800 text-[11px] px-2 py-0.5 rounded font-bold border border-amber-200"><i class="fa-regular fa-star mr-1"></i>今週訪問予定</span>`;
+                    } else {
+                        statusBadge = `<span class="bg-purple-100 text-purple-800 text-[11px] px-2 py-0.5 rounded font-bold border border-purple-200">訪問予定 (${school.date})</span>`;
+                    }
+                }
+                
+                if(school.status === "訪問完了") {
+                    statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-[11px] px-2 py-0.5 rounded font-bold border border-emerald-200"><i class="fa-solid fa-circle-check mr-1"></i>訪問完了</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = `bg-white p-5 rounded-xl border hover:border-indigo-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between ${alertClass}`;
+                card.onclick = () => showDetailPage(school.id);
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">${school.category}系</span>
+                            ${statusBadge}
+                        </div>
+                        <h3 class="font-bold text-gray-800 text-base leading-snug">${school.name}</h3>
+                        <p class="text-xs text-gray-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${school.region} ・ ${school.walk || '徒歩未定'}</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-50 flex justify-between items-center text-xs text-indigo-600 font-bold">
+                        <span>カードを開く</span>
+                        <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function showDetailPage(schoolId) {
+            currentSelectedSchoolId = schoolId;
+            refreshDetailPageWithoutState();
+            document.getElementById('page-top').classList.add('hidden');
+            document.getElementById('page-detail').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        // 詳細画面内の表示テキストだけを再描画する内包処理
+        function refreshDetailPageWithoutState() {
+            const school = schoolsData.find(s => s.id === currentSelectedSchoolId);
+            if(!school) return;
+
+            document.getElementById('detail-name').innerText = school.name;
+            document.getElementById('detail-badge-cat').innerText = school.category + "系";
+            document.getElementById('detail-badge-reg').innerText = school.region;
+            document.getElementById('detail-badge-walk').innerHTML = `<i class="fa-regular fa-clock mr-1"></i>最寄り駅から徒歩：${school.walk || '徒歩未定'}`;
+            document.getElementById('detail-address').innerText = school.address || "住所未登録";
+            document.getElementById('detail-station-badge').innerText = school.station || "未定駅";
+            document.getElementById('detail-access').innerText = school.access || "詳細アクセス情報がありません。";
+            document.getElementById('detail-status-select').value = school.status;
+            document.getElementById('detail-date-input').value = school.date || "";
+            document.getElementById('detail-memo').value = school.memo || "";
+
+            const majorContainer = document.getElementById('detail-majors');
+            majorContainer.innerHTML = (school.majors || []).map(m => `
+                <span class="bg-white border border-gray-200 text-slate-600 text-xs px-3 py-1 rounded-full shadow-sm font-medium">${m}</span>
+            `).join('');
+
+            const careerContainer = document.getElementById('detail-careers');
+            careerContainer.innerHTML = (school.careers || []).map(c => `
+                <span class="bg-slate-50/80 border border-slate-200/60 text-slate-600 text-xs px-3 py-1 rounded-full font-medium shadow-sm">${c}</span>
+            `).join('');
+        }
+
+        function showTopPage() {
+            currentSelectedSchoolId = null;
+            document.getElementById('page-detail').classList.add('hidden');
+            document.getElementById('page-top').classList.remove('hidden');
+            updateDashboardCounters();
+            renderCardList();
+        }
+
+        // ★修正：ステータス・日程・メモをSupabaseクラウドへ更新保存
+        async function saveAndReturn() {
+            const status = document.getElementById('detail-status-select').value;
+            const date = document.getElementById('detail-date-input').value;
+            const memo = document.getElementById('detail-memo').value;
+
+            const { error } = await supabase
+                .from('schools')
+                .update({ status: status, date: date, memo: memo })
+                .eq('id', currentSelectedSchoolId);
+
+            if (error) { alert("保存に失敗しました: " + error.message); return; }
+            showTopPage();
+        }
+
+        function closeAllModals() {
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            document.getElementById('modal-add-school').classList.add('hidden');
+            document.getElementById('modal-edit-school').classList.add('hidden');
+        }
+
+        function openAddModal() {
+            document.getElementById('add-name').value = "";
+            document.getElementById('add-station').value = "";
+            document.getElementById('add-walk').value = "徒歩5分";
+            document.getElementById('add-address').value = "";
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('modal-add-school').classList.remove('hidden');
+        }
+
+        // ★修正：新規カードをSupabaseクラウドへインサート挿入
+        async function submitAddSchool() {
+            const name = document.getElementById('add-name').value.trim();
+            if(!name) { alert("学校名は必須入力です！"); return; }
+
+            const category = document.getElementById('add-category').value;
+            const region = document.getElementById('add-region').value;
+            const station = document.getElementById('add-station').value || "未定駅";
+            const walk = document.getElementById('add-walk').value || "徒歩未定";
+            const address = document.getElementById('add-address').value || "住所未登録";
+            const access = station ? `${station}より${walk}` : "";
+
+            const { error } = await supabase
+                .from('schools')
+                .insert([{
+                    name: name,
+                    category: category,
+                    region: region,
+                    station: station,
+                    walk: walk,
+                    address: address,
+                    status: "未選択",
+                    date: "",
+                    access: access,
+                    majors: ["新しい学科"],
+                    careers: ["これから開拓"],
+                    memo: ""
+                }]);
+
+            if (error) { alert("登録に失敗しました: " + error.message); return; }
+            closeAllModals();
+        }
+
+        function openEditModal() {
+            const school = schoolsData.find(s => s.id === currentSelectedSchoolId);
+            document.getElementById('edit-name').value = school.name;
+            document.getElementById('edit-category').value = school.category;
+            document.getElementById('edit-region').value = school.region;
+            document.getElementById('edit-walk').value = school.walk || "";
+            document.getElementById('edit-station').value = school.station || "";
+            document.getElementById('edit-address').value = school.address || "";
+            document.getElementById('edit-access').value = school.access || "";
+            document.getElementById('edit-majors').value = (school.majors || []).join(', ');
+            document.getElementById('edit-careers').value = (school.careers || []).join(', ');
+
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('modal-edit-school').classList.remove('hidden');
+        }
+
+        // ★修正：詳細な学校の中身変更をSupabaseクラウドへアップデート
+        async function submitEditSchool() {
+            const name = document.getElementById('edit-name').value.trim();
+            const category = document.getElementById('edit-category').value;
+            const region = document.getElementById('edit-region').value;
+            const walk = document.getElementById('edit-walk').value.trim();
+            const station = document.getElementById('edit-station').value.trim();
+            const address = document.getElementById('edit-address').value.trim();
+            const access = document.getElementById('edit-access').value.trim();
+            
+            const majorsRaw = document.getElementById('edit-majors').value;
+            const majors = majorsRaw ? majorsRaw.split(',').map(m => m.trim()).filter(m => m) : [];
+            
+            const careersRaw = document.getElementById('edit-careers').value;
+            const careers = careersRaw ? careersRaw.split(',').map(c => c.trim()).filter(c => c) : [];
+
+            const { error } = await supabase
+                .from('schools')
+                .update({
+                    name: name, category: category, region: region, walk: walk,
+                    station: station, address: address, access: access,
+                    majors: majors, careers: careers
+                })
+                .eq('id', currentSelectedSchoolId);
+
+            if (error) { alert("編集の保存に失敗しました: " + error.message); return; }
+            closeAllModals();
+        }
+
+        // 各種入力イベント設定
+        document.getElementById('searchInput').addEventListener('input', renderCardList);
+        document.getElementById('regionSelect').addEventListener('change', renderCardList);
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.className = "tab-btn px-4 py-1.5 text-xs rounded-md text-gray-600 hover:bg-gray-200/50";
+                });
+                e.target.className = "tab-btn active px-4 py-1.5 text-xs rounded-md bg-white shadow-sm text-gray-800 font-bold border border-gray-200/50";
+                renderCardList();
+            });
+        });
+
+        // 🌟【最強機能】他の誰かがデータを変えたら、自動で全員の画面を更新する超リアルタイム設定
+        supabase
+            .channel('schema-db-changes')
+            .on('postgres_changes', { event: '*', filter: 'table=eq.schools' }, (payload) => {
+                console.log('クラウド上でデータが更新されました！最新の状態を同期します。');
+                loadDataFromSupabase();
+            })
+            .subscribe();
+
+        // 起動時にデータを読み込む
+        loadDataFromSupabase();
+    </script>
+</body>
+</html>
